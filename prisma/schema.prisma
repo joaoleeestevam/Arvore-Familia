@@ -1,0 +1,177 @@
+// Prisma schema - Site da Família
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO_FILE
+  VIDEO_LINK
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               Role     @default(MEMBER)
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  photosUploaded      Photo[]
+  stories             Story[]
+  peopleCreated       Person[]
+  unionsCreated       Union[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Person {
+  id          String         @id @default(cuid())
+  fullName    String
+  gender      Gender?
+  birthDate   DateTime?
+  deathDate   DateTime?
+  bio         String?
+  phone       String?
+  email       String?
+  address     String?
+  status      ApprovalStatus @default(APPROVED)
+
+  // foto de perfil atual
+  profilePhotoId String? @unique
+  profilePhoto   Photo?  @relation("ProfilePhoto", fields: [profilePhotoId], references: [id])
+
+  // pais (auto-relacionamento)
+  fatherId String?
+  father   Person?  @relation("FatherChildren", fields: [fatherId], references: [id])
+  childrenAsFather Person[] @relation("FatherChildren")
+
+  motherId String?
+  mother   Person?  @relation("MotherChildren", fields: [motherId], references: [id])
+  childrenAsMother Person[] @relation("MotherChildren")
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  photos  PhotoPerson[]
+  stories StoryPerson[]
+
+  unionsAsPartnerA Union[] @relation("PartnerAUnions")
+  unionsAsPartnerB Union[] @relation("PartnerBUnions")
+}
+
+model Union {
+  id         String    @id @default(cuid())
+  partnerAId String
+  partnerA   Person    @relation("PartnerAUnions", fields: [partnerAId], references: [id], onDelete: Cascade)
+  partnerBId String
+  partnerB   Person    @relation("PartnerBUnions", fields: [partnerBId], references: [id], onDelete: Cascade)
+  startDate  DateTime?
+  endDate    DateTime?
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt  DateTime  @default(now())
+}
+
+model Photo {
+  id                String    @id @default(cuid())
+  mediaType         MediaType @default(IMAGE)
+  filePath          String?
+  mimeType          String?
+  externalUrl       String?
+  takenDate         DateTime?
+  caption           String?
+  description       String?
+  otherPeopleNames  String?
+  uploadedById      String?
+  uploadedBy        User?     @relation(fields: [uploadedById], references: [id])
+  createdAt         DateTime  @default(now())
+
+  people         PhotoPerson[]
+  profileOfPerson Person? @relation("ProfilePhoto")
+  stories        StoryPhoto[]
+  backgroundOfSettings FamilySettings? @relation("BackgroundPhoto")
+}
+
+model PhotoPerson {
+  photoId  String
+  photo    Photo  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([photoId, personId])
+}
+
+model Story {
+  id               String   @id @default(cuid())
+  title            String
+  content          String
+  otherPeopleNames String?
+  authorId         String?
+  author           User?    @relation(fields: [authorId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  people StoryPerson[]
+  photos StoryPhoto[]
+}
+
+model FamilySettings {
+  id                String   @id @default(cuid())
+  familyName        String   @default("Minha Família")
+  description       String?
+  backgroundPhotoId String?  @unique
+  backgroundPhoto   Photo?   @relation("BackgroundPhoto", fields: [backgroundPhotoId], references: [id])
+  updatedAt         DateTime @updatedAt
+}
+
+model StoryPerson {
+  storyId  String
+  story    Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, personId])
+}
+
+model StoryPhoto {
+  storyId String
+  story   Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  photoId String
+  photo   Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, photoId])
+}
