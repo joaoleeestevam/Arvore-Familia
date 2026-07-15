@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import MediaThumb from "@/components/MediaThumb";
+import CommentSection from "@/components/CommentSection";
 import DeletePhotoButton from "./delete-button";
 
 export default async function FotoPage({
@@ -19,6 +20,10 @@ export default async function FotoPage({
     include: {
       uploadedBy: { select: { name: true } },
       people: { include: { person: true } },
+      comments: {
+        include: { author: { select: { name: true } } },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -99,6 +104,20 @@ export default async function FotoPage({
           <DeletePhotoButton photoId={photo.id} />
         </div>
       )}
+
+      <CommentSection
+        photoId={photo.id}
+        comments={photo.comments.map((comment) => ({
+          id: comment.id,
+          content: comment.content,
+          createdAt: comment.createdAt.toLocaleString("pt-BR", {
+            dateStyle: "short",
+            timeStyle: "short",
+          }),
+          authorName: comment.author?.name ?? "Desconhecido",
+          canDelete: user.role === "ADMIN" || comment.authorId === user.id,
+        }))}
+      />
     </div>
   );
 }

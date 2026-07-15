@@ -45,6 +45,7 @@ model User {
   peopleCreated       Person[]
   unionsCreated       Union[]
   passwordResetTokens PasswordResetToken[]
+  comments            Comment[]
 }
 
 model PasswordResetToken {
@@ -124,6 +125,17 @@ model Photo {
   profileOfPerson Person? @relation("ProfilePhoto")
   stories        StoryPhoto[]
   backgroundOfSettings FamilySettings? @relation("BackgroundPhoto")
+  comments       Comment[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  photoId   String
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
 }
 
 model PhotoPerson {
