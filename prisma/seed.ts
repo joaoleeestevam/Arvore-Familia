@@ -38,6 +38,7 @@ async function main() {
       passwordHash,
       role: "ADMIN",
       isActive: true,
+      mustChangePassword: true,
     },
   });
 
@@ -45,7 +46,7 @@ async function main() {
   console.log(`  Email: ${email}`);
   console.log(`  Senha: ${password}`);
   console.log(
-    "\nGuarde essa senha em local seguro e troque-a após o primeiro login (em breve haverá tela para isso).",
+    "\nGuarde essa senha em local seguro. Ela será trocada obrigatoriamente no primeiro login.",
   );
 }
 
