@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
+import { sanitizeRichText } from "@/lib/sanitize";
 import PhotoThumb from "@/components/PhotoThumb";
 import DeleteStoryButton from "./delete-button";
 
@@ -35,9 +36,16 @@ export default async function HistoriaPage({
       <p className="text-sm text-stone-500 dark:text-stone-400">
         {story.author?.name ?? "Anônimo"} · {formatDate(story.createdAt)}
       </p>
-      <p className="whitespace-pre-wrap text-stone-700 dark:text-stone-300">
-        {story.content}
-      </p>
+      {story.content.trim().startsWith("<") ? (
+        <div
+          className="prose-story text-stone-700 dark:text-stone-300 [&_blockquote]:border-l-2 [&_blockquote]:border-stone-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:text-base [&_h3]:font-semibold [&_li]:ml-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 dark:[&_blockquote]:border-stone-600"
+          dangerouslySetInnerHTML={{ __html: sanitizeRichText(story.content) }}
+        />
+      ) : (
+        <p className="whitespace-pre-wrap text-stone-700 dark:text-stone-300">
+          {story.content}
+        </p>
+      )}
 
       {(story.people.length > 0 || story.otherPeopleNames) && (
         <div>

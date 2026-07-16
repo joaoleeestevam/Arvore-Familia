@@ -3,6 +3,7 @@ import { BookOpen, Plus } from "lucide-react";
 import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
+import { toPlainTextExcerpt } from "@/lib/sanitize";
 import PhotoThumb from "@/components/PhotoThumb";
 
 export default async function HistoriasPage() {
@@ -57,7 +58,7 @@ export default async function HistoriasPage() {
                     {story.title}
                   </h2>
                   <p className="mt-1 line-clamp-2 text-sm text-stone-600 dark:text-stone-400">
-                    {story.content}
+                    {toPlainTextExcerpt(story.content)}
                   </p>
                   <p className="mt-2 text-xs text-stone-500 dark:text-stone-500">
                     {story.author?.name ?? "Anônimo"} ·{" "}

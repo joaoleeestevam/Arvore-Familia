@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import type { StoryFormState } from "@/app/actions/story";
 import { compressFileList } from "@/lib/image-compress";
 import PeopleCombobox from "@/components/PeopleCombobox";
+import RichTextEditor from "@/components/RichTextEditor";
 
 type PersonOption = { id: string; fullName: string };
 
@@ -60,17 +61,8 @@ export default function StoryForm({
         />
       </div>
       <div>
-        <label className={labelClass} htmlFor="content">
-          História *
-        </label>
-        <textarea
-          id="content"
-          name="content"
-          required
-          rows={10}
-          defaultValue={initialValues?.content}
-          className={inputClass}
-        />
+        <label className={labelClass}>História *</label>
+        <RichTextEditor name="content" defaultValue={initialValues?.content} />
       </div>
 
       <PeopleCombobox

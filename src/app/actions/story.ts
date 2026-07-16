@@ -6,10 +6,13 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { saveUploadedPhoto, InvalidUploadError } from "@/lib/uploads";
+import { sanitizeRichText, isRichTextEmpty } from "@/lib/sanitize";
 
 const StorySchema = z.object({
   title: z.string().trim().min(1, "Informe um título."),
-  content: z.string().trim().min(1, "Escreva o conteúdo da história."),
+  content: z
+    .string()
+    .refine((value) => !isRichTextEmpty(value), "Escreva o conteúdo da história."),
 });
 
 export type StoryFormState = { error?: string } | undefined;
@@ -72,7 +75,7 @@ export async function createStory(
   const story = await prisma.story.create({
     data: {
       title: parsed.data.title,
-      content: parsed.data.content,
+      content: sanitizeRichText(parsed.data.content),
       otherPeopleNames: otherPeopleNames || null,
       authorId: user.id,
       people: { create: personIds.map((personId) => ({ personId })) },
@@ -138,7 +141,7 @@ export async function updateStory(
       where: { id: storyId },
       data: {
         title: parsed.data.title,
-        content: parsed.data.content,
+        content: sanitizeRichText(parsed.data.content),
         otherPeopleNames: otherPeopleNames || null,
       },
     }),
