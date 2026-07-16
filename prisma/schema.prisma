@@ -117,6 +117,7 @@ model Photo {
   caption           String?
   description       String?
   otherPeopleNames  String?
+  phash             String?
   uploadedById      String?
   uploadedBy        User?     @relation(fields: [uploadedById], references: [id])
   createdAt         DateTime  @default(now())

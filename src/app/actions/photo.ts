@@ -11,6 +11,7 @@ import {
   deleteUploadedPhoto,
   InvalidUploadError,
 } from "@/lib/uploads";
+import { computeImageHash, hammingDistance, DUPLICATE_THRESHOLD } from "@/lib/phash";
 
 const PhotoSchema = z.object({
   mediaType: z.enum(["IMAGE", "VIDEO_FILE", "VIDEO_LINK"]).default("IMAGE"),
@@ -20,7 +21,26 @@ const PhotoSchema = z.object({
   externalUrl: z.string().optional(),
 });
 
-export type PhotoFormState = { error?: string } | undefined;
+export type PhotoFormState =
+  | { error?: string }
+  | { duplicate: { photoId: string; caption: string | null } }
+  | undefined;
+
+async function findDuplicatePhoto(phash: string) {
+  const candidates = await prisma.photo.findMany({
+    where: { mediaType: "IMAGE", phash: { not: null } },
+    select: { id: true, phash: true, caption: true },
+  });
+  for (const candidate of candidates) {
+    if (
+      candidate.phash &&
+      hammingDistance(phash, candidate.phash) <= DUPLICATE_THRESHOLD
+    ) {
+      return candidate;
+    }
+  }
+  return null;
+}
 
 function toDateOrNull(value: string | undefined) {
   if (!value) return null;
@@ -42,7 +62,12 @@ async function resolveMedia(
   formData: FormData,
 ): Promise<
   | { error: string }
-  | { filePath: string | null; mimeType: string | null; externalUrl: string | null }
+  | {
+      filePath: string | null;
+      mimeType: string | null;
+      externalUrl: string | null;
+      phash: string | null;
+    }
 > {
   if (mediaType === "IMAGE") {
     const file = formData.get("photo");
@@ -50,8 +75,16 @@ async function resolveMedia(
       return { error: "Selecione uma foto para enviar." };
     }
     try {
-      const saved = await saveUploadedPhoto(file);
-      return { filePath: saved.relativePath, mimeType: saved.mimeType, externalUrl: null };
+      const [saved, phash] = await Promise.all([
+        saveUploadedPhoto(file),
+        computeImageHash(Buffer.from(await file.arrayBuffer())),
+      ]);
+      return {
+        filePath: saved.relativePath,
+        mimeType: saved.mimeType,
+        externalUrl: null,
+        phash,
+      };
     } catch (err) {
       if (err instanceof InvalidUploadError) return { error: err.message };
       throw err;
@@ -65,7 +98,12 @@ async function resolveMedia(
     }
     try {
       const saved = await saveUploadedVideo(file);
-      return { filePath: saved.relativePath, mimeType: saved.mimeType, externalUrl: null };
+      return {
+        filePath: saved.relativePath,
+        mimeType: saved.mimeType,
+        externalUrl: null,
+        phash: null,
+      };
     } catch (err) {
       if (err instanceof InvalidUploadError) return { error: err.message };
       throw err;
@@ -75,7 +113,7 @@ async function resolveMedia(
   const url = (formData.get("externalUrl") as string | null)?.trim();
   if (!url) return { error: "Informe o link do vídeo." };
   if (!isSafeExternalUrl(url)) return { error: "Informe um link http(s) válido." };
-  return { filePath: null, mimeType: null, externalUrl: url };
+  return { filePath: null, mimeType: null, externalUrl: url, phash: null };
 }
 
 export async function uploadPhoto(
@@ -103,12 +141,24 @@ export async function uploadPhoto(
     return { error: media.error };
   }
 
+  const confirmDuplicate = formData.get("confirmDuplicate") === "true";
+  if (media.phash && !confirmDuplicate) {
+    const duplicate = await findDuplicatePhoto(media.phash);
+    if (duplicate) {
+      if (media.filePath) await deleteUploadedPhoto(media.filePath);
+      return {
+        duplicate: { photoId: duplicate.id, caption: duplicate.caption },
+      };
+    }
+  }
+
   const photo = await prisma.photo.create({
     data: {
       mediaType: parsed.data.mediaType,
       filePath: media.filePath,
       mimeType: media.mimeType,
       externalUrl: media.externalUrl,
+      phash: media.phash,
       takenDate: toDateOrNull(parsed.data.takenDate),
       caption: parsed.data.caption || null,
       description: parsed.data.description || null,

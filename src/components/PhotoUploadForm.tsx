@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import type { PhotoFormState } from "@/app/actions/photo";
 import { compressImageFile } from "@/lib/image-compress";
 import PeopleCombobox from "@/components/PeopleCombobox";
@@ -38,6 +40,10 @@ export default function PhotoUploadForm({
   const [state, formAction, pending] = useActionState(action, undefined);
   const [compressing, setCompressing] = useState(false);
   const [mediaType, setMediaType] = useState<MediaType>("IMAGE");
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const duplicate = state && "duplicate" in state ? state.duplicate : null;
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const input = e.target;
@@ -57,10 +63,15 @@ export default function PhotoUploadForm({
   }
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       {fixedPersonIds.map((id) => (
         <input key={id} type="hidden" name="personIds" value={id} />
       ))}
+      <input
+        type="hidden"
+        name="confirmDuplicate"
+        value={confirmDuplicate ? "true" : "false"}
+      />
 
       {!initialValues && (
         <>
@@ -187,10 +198,39 @@ export default function PhotoUploadForm({
         label="Quem está na foto/vídeo"
       />
 
-      {state?.error && (
+      {state && "error" in state && state.error && (
         <p className="text-sm text-red-600 dark:text-red-400">
           {state.error}
         </p>
+      )}
+
+      {duplicate && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p>
+              Essa foto parece muito parecida com{" "}
+              <Link
+                href={`/fotos/${duplicate.photoId}`}
+                target="_blank"
+                className="font-medium underline"
+              >
+                {duplicate.caption || "uma foto já enviada"}
+              </Link>
+              . Envie mesmo assim se não for repetida.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmDuplicate(true);
+                requestAnimationFrame(() => formRef.current?.requestSubmit());
+              }}
+              className="mt-2 rounded-lg border border-amber-400 bg-white px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-stone-900 dark:text-amber-300 dark:hover:bg-stone-800"
+            >
+              Enviar mesmo assim
+            </button>
+          </div>
+        </div>
       )}
 
       <button
