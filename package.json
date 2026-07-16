@@ -6,7 +6,7 @@
     "dev": "next dev",
     "postinstall": "prisma generate",
     "build": "next build",
-    "prestart": "prisma migrate deploy && tsx prisma/seed.ts",
+    "prestart": "prisma migrate deploy && tsx prisma/seed.ts && tsx prisma/backfill-phash.ts",
     "start": "next start",
     "lint": "eslint"
   },
